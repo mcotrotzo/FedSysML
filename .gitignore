@@ -5,8 +5,11 @@ output/*.tfstate.*
 output/*.tfvars
 output/*.tfvars.json
 output/*_payload.zip
+output/paho_layer.zip
+output/paho_layer/
 src/paho_layer.zip
 src/paho_layer/
+
 __pycache__/
 *.pyc
 *.pyo
