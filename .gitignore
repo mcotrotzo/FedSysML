@@ -20,3 +20,5 @@ ENV/
 .vscode/
 .idea/
 .directory
+/src/paho_layer/
+/src/paho_layer.zip
