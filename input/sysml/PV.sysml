@@ -35,8 +35,6 @@ package PVTwin {
 
     #Twin def PV {
 
-        
-        #entity PV {
         #entity PV {
             #constAttribute maxOutput {
                 :>> value default "10000.0";
@@ -55,7 +53,7 @@ package PVTwin {
                     :>> dataType default AttributeDataType::DOUBLE;
                 }
             }
-        }
+        
 
         :>> hotDatabaseRetentionDays default 30;
         :>> coldDatabaseRetentionDays default 30;
@@ -72,24 +70,24 @@ package PVTwin {
     }
     
         #condition lowOutput : LowOutput {
-            :>> leftOperand = PV.PV.pV1.output;
+            :>> leftOperand = PV.pV1.output;
             :>> operator = ComparisonOperator::LESS_THAN;
-            :>> rightOperand = PV.PV.minOutput;
+            :>> rightOperand = PV.minOutput;
             :>> lowOutput {
                 :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = PV.PV.pV1;
+                :>> componentTopic = PV.pV1;
             }
         }
 
         #condition peakProduction : PeakProduction {
-            :>> leftOperand = PV.PV.pV1.output;
+            :>> leftOperand = PV.pV1.output;
             :>> operator = ComparisonOperator::GREATER_THAN;
-            :>> rightOperand = PV.PV.peakThreshold;
+            :>> rightOperand = PV.peakThreshold;
             :>> peakProduction {
                 :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = PV.PV.pV1;
-                test1 :>> inputParameters = PV.PV.pV1.output;
-                test2 :>> inputParameters = PV.PV.peakThreshold;
+                :>> componentTopic =    PV.pV1;
+                test1 :>> inputParameters = PV.pV1.output;
+                test2 :>> inputParameters = PV.peakThreshold;
                 test3 :>> outputParameters = AttributeDataType::STRING;
                 test4 :>> outputParameters = AttributeDataType::DOUBLE;
             }

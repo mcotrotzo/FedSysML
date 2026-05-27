@@ -38,7 +38,7 @@ class BrokerConfig(BaseModel):
     broker_port: int
     broker_username: str
     broker_password: str
-    use_tls: bool = True
+    use_tls: bool = False
 
 
 class Feedback(BaseModel):

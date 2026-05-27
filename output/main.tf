@@ -306,7 +306,7 @@ resource "aws_lambda_function" "CombineAllExternal_feedback" {
       BROKER_PORT = "1883"
       BROKER_USERNAME = ""
       BROKER_PASSWORD = ""
-      USE_TLS = "true"
+      USE_TLS = "false"
     }
   }
 }
@@ -474,7 +474,7 @@ resource "aws_lambda_function" "CombinePVBattery_feedback" {
       BROKER_PORT = "1883"
       BROKER_USERNAME = ""
       BROKER_PASSWORD = ""
-      USE_TLS = "true"
+      USE_TLS = "false"
     }
   }
 }
@@ -642,7 +642,7 @@ resource "aws_lambda_function" "CombinePVGrid_feedback" {
       BROKER_PORT = "1883"
       BROKER_USERNAME = ""
       BROKER_PASSWORD = ""
-      USE_TLS = "true"
+      USE_TLS = "false"
     }
   }
 }

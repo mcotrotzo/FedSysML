@@ -34,7 +34,6 @@ package BatteryTwin {
     }
 
     #Twin def Battery {
-        #entity Battery{
             #entity Battery {
             #constAttribute totalCapacity {
                 :>> value default "100.0";
@@ -57,40 +56,40 @@ package BatteryTwin {
                 }
             }
         }
-    }
+    
         :>> hotDatabaseRetentionDays default 30;
         :>> coldDatabaseRetentionDays default 30;
 
         #condition lowCapacity : LowCapacity {
-            :>> leftOperand = Battery.Battery.p16.currentCapacity;
+            :>> leftOperand = Battery.p16.currentCapacity;
             :>> operator = ComparisonOperator::LESS_THAN;
-            :>> rightOperand = Battery.Battery.minCapacity;
+            :>> rightOperand = Battery.minCapacity;
             :>> lowCapacity {
                 :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = Battery.Battery.p16;
+                :>> componentTopic = Battery.p16;
             }
         }
 
         #condition fullyCharged : FullyCharged {
-            :>> leftOperand = Battery.Battery.p16.currentCapacity;
+            :>> leftOperand = Battery.p16.currentCapacity;
             :>> operator = ComparisonOperator::EQUAL;
-            :>> rightOperand = Battery.Battery.totalCapacity;
+            :>> rightOperand = Battery.totalCapacity;
             :>> fullyCharged {
                 :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = Battery.Battery.p16;
+                :>> componentTopic = Battery.p16;
             }
         }
 
         #condition overheatAlert : OverheatAlert {
-            :>> leftOperand = Battery.Battery.p16.temperature;
+            :>> leftOperand = Battery.p16.temperature;
             :>> operator = ComparisonOperator::GREATER_THAN ;
-            :>> rightOperand = Battery.Battery.maxTemperature;
+            :>> rightOperand = Battery.maxTemperature;
             :>> overheatAlert {
                 :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = Battery.Battery.p16;
-                test1 :>> inputParameters = Battery.Battery.p16.temperature;
-                :>> inputParameters = Battery.Battery.maxTemperature;
-                test2 :>> inputParameters = Battery.Battery.p16.currentCapacity;
+                :>> componentTopic = Battery.p16;
+                test1 :>> inputParameters = Battery.p16.temperature;
+                :>> inputParameters = Battery.maxTemperature;
+                test2 :>> inputParameters = Battery.p16.currentCapacity;
                 test3 :>> outputParameters = AttributeDataType::STRING;
                 test6 :>> outputParameters = AttributeDataType::DOUBLE;
             
