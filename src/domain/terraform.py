@@ -154,8 +154,6 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
         deployer = LambdaDeployer(f"{ns.name}_collector", COLLECTOR_PATH)
         deployer.add_statement("Allow", ["lambda:InvokeFunction"], arns)
         
-        # Die Struktur, die in die Umgebungsvariable geladen wird
-        # { "CombineToAuthbroker": [ { ... Parameter 1 ... }, { ... Parameter 2 ... } ] }
         params = {
             ns.name: []
         }

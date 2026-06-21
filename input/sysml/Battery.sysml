@@ -2,100 +2,53 @@ package BatteryTwin {
 
     private import MetaModelDigitalTwin::*;
 
-    #Component def PAC_Sensor {
-        
-    }
+    #Component def PAC_Sensor { }
 
-    #Condition def LowCapacity {
-        #strategyAction lowCapacity :>> strategieActions {
-            :>> name = "lowCapacity";
+    #Condition def BatteryStatusStrategy {
+        #strategyAction status :>> strategieActions {
+            :>> name = "status";
             :>> strategyType = StrategyType::LAMBDA;
-            :>> pathToCode = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/battery/low_capacity";
-            :>> external = false;
-        }
-    }
-
-    #Condition def FullyCharged {
-        #strategyAction fullyCharged :>> strategieActions {
-            :>> name = "fullyCharged";
-            :>> strategyType = StrategyType::LAMBDA;
-            :>> pathToCode = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/battery/fully_charged";
-            :>> external = false;
-        }
-    }
-
-    #Condition def OverheatAlert {
-        #strategyAction overheatAlert :>> strategieActions {
-            :>> name = "overheatAlert";
-            :>> strategyType = StrategyType::LAMBDA;
-            :>> pathToCode = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/battery/overheatAlert";
+            :>> pathToCode = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/input/sysml/testLambdaFunctions/battery/status";
             :>> external = false;
         }
     }
 
     #Twin def Battery {
-            #entity Battery {
-            #constAttribute totalCapacity {
-                :>> value default "100.0";
-                :>> dataType default AttributeDataType::DOUBLE;
-            }
-            #constAttribute minCapacity {
-                :>> value default "10.0";
-                :>> dataType default AttributeDataType::DOUBLE;
-            }
-            #constAttribute maxTemperature {
-                :>> value default "45.0";
-                :>> dataType default AttributeDataType::DOUBLE;
-            }
+        #entity Battery {
             #component p16 : PAC_Sensor {
-                #measureAttribute currentCapacity {
+                #measureAttribute isPlugged {
+                    :>> dataType default AttributeDataType::STRING;
+                }
+                #measureAttribute charges{
+                    :>> dataType default AttributeDataType::INTEGER;
+                }
+
+                #measureAttribute consumption{
                     :>> dataType default AttributeDataType::DOUBLE;
                 }
-                #measureAttribute temperature {
-                    :>> dataType default AttributeDataType::DOUBLE;
-                }
+            }
+            #constAttribute trueValue {
+                :>> value default "true";
+                :>> dataType default AttributeDataType::STRING;
+            }
+            #constAttribute maxTemp {
+                :>> value default "50.0";
+                :>> dataType default AttributeDataType::DOUBLE;
             }
         }
     
         :>> hotDatabaseRetentionDays default 30;
         :>> coldDatabaseRetentionDays default 30;
 
-        #condition lowCapacity : LowCapacity {
-            :>> leftOperand = Battery.p16.currentCapacity;
-            :>> operator = ComparisonOperator::LESS_THAN;
-            :>> rightOperand = Battery.minCapacity;
-            :>> lowCapacity {
-                :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = Battery.p16;
-            }
-        }
-
-        #condition fullyCharged : FullyCharged {
-            :>> leftOperand = Battery.p16.currentCapacity;
+        #condition operational : BatteryStatusStrategy {
+            :>> leftOperand = Battery.p16.isPlugged;
             :>> operator = ComparisonOperator::EQUAL;
-            :>> rightOperand = Battery.totalCapacity;
-            :>> fullyCharged {
-                :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = Battery.p16;
+            :>> rightOperand = Battery.trueValue;
+            :>> status {
+                :>> feedbackTopicType = FeedbackTopicType::EXTERN;
+                chargeValue :>> inputParameters = Battery.p16.charges;
+                :>> externalTopic = "Battery/iot-data";
             }
-        }
-
-        #condition overheatAlert : OverheatAlert {
-            :>> leftOperand = Battery.p16.temperature;
-            :>> operator = ComparisonOperator::GREATER_THAN ;
-            :>> rightOperand = Battery.maxTemperature;
-            :>> overheatAlert {
-                :>> feedbackTopicType = FeedbackTopicType::INTERN;
-                :>> componentTopic = Battery.p16;
-                test1 :>> inputParameters = Battery.p16.temperature;
-                :>> inputParameters = Battery.maxTemperature;
-                test2 :>> inputParameters = Battery.p16.currentCapacity;
-                test3 :>> outputParameters = AttributeDataType::STRING;
-                test6 :>> outputParameters = AttributeDataType::DOUBLE;
-            
-
         }
     }
-
-}
 }

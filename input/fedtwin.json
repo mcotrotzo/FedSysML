@@ -1,83 +1,18 @@
 {
   "fedTwins": [
     {
-      "name": "myFedTwin",
+      "name": "MicroGrid",
       "newStrategies": [
         {
-          "name": "CombineAllInternal",
-          "pathToCode": "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/fedTwinCombinedStrategy",
+          "name": "ConsumptionStrategy",
+          "pathToCode": "/home/marcocotrotzo/PycharmProjects/SymlCOnv/input/sysml/testLambdaFunctions/fedTwinCombinedStrategy",
           "feedback": {
             "type": "INTERNAL",
-            "topic": "EXTERN_TPIC"
+            "topic": "Battery/iot-data"
           },
           "strategies": [
-            "PV.peakProduction",
-            "Battery.overheatAlert",
-            "MicroGrid.overloadAlert"
-          ]
-        },
-        {
-          "name": "CombineAllExternal",
-          "pathToCode": "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/fedTwinCombinedStrategy",
-          "feedback": {
-            "type": "EXTERNAL",
-            "topic": "unAuthBroker/topics/peakAlert",
-            "brokerKey": "default"
-          },
-          "strategies": [
-            "PV.peakProduction",
-            "Battery.overheatAlert",
-            "MicroGrid.overloadAlert"
-          ]
-        },
-        {
-          "name": "CombinePVBattery",
-          "pathToCode": "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/fedTwinCombinedStrategy",
-          "feedback": {
-            "type": "EXTERNAL",
-            "topic": "unAuthBroker/topics/peakAlert",
-            "brokerKey": "default"
-          },
-          "strategies": [
-            "PV.peakProduction",
-            "Battery.overheatAlert"
-          ]
-        },
-        {
-          "name": "CombinePVGrid",
-          "pathToCode": "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/fedTwinCombinedStrategy",
-          "feedback": {
-            "type": "EXTERNAL",
-            "topic": "unAuthBroker/topics/peakAlert",
-            "brokerKey": "default"
-          },
-          "strategies": [
-            "PV.peakProduction",
-            "MicroGrid.overloadAlert"
-          ]
-        },
-        {
-          "name": "SingleStrategyPass",
-          "pathToCode": "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/fedTwinCombinedStrategy",
-          "feedback": {
-            "type": "INTERNAL",
-            "topic": "EXTERN_TPIC"
-          },
-          "strategies": [
-            "Battery.overheatAlert"
-          ]
-        },
-        {
-          "name": "CombineToAuthbroker",
-          "pathToCode": "/home/marcocotrotzo/PycharmProjects/SymlCOnv/testLambdaFunctions/fedTwinCombinedStrategy",
-          "feedback": {
-            "type": "EXTERNAL",
-            "topic": "authBroker/topics/alerts",
-            "brokerKey": "eu_broker"
-          },
-          "strategies": [
-            "Battery.overheatAlert",
-            "MicroGrid.overloadAlert"
+            "PV.production",
+            "Battery.status"
           ]
         }
       ]
