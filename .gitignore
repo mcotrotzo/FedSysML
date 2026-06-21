@@ -46,3 +46,6 @@ ENV/
 /output/SingleStrategyPass_strategy_payload.zip
 /output/terraform.tfstate
 /output/terraform.tfstate.backup
+
+config_credentials.json
+/config_credentials.json
