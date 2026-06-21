@@ -24,6 +24,7 @@ for twin in Battery PV; do
     python main.py <<EOF
 deploy
 EOF
+    cp ./digital-twin-manager/src/${twin}_federation_input.json ./input/strategyInputs
     cd ..
 done
 

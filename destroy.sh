@@ -4,9 +4,8 @@ for twin in Battery PV; do
     cd digital-twin-manager/src
     python main.py <<EOF
 destroy
-EOF
+EOF || true
     cd ..
-    cp ./digital-twin-manager/src/${twin}_federation_input.json ./input/strategyInputs
 done
 
 
