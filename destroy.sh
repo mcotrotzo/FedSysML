@@ -4,8 +4,8 @@ for twin in Battery PV; do
     cd digital-twin-manager/src
     python main.py <<EOF
 destroy
-EOF || true
-    cd ..
+EOF
+    cd ../..
 done
 
 

@@ -23,9 +23,9 @@ for twin in Battery PV; do
     cd digital-twin-manager/src
     python main.py <<EOF
 deploy
-EOF
+EOF || true
     cp ./digital-twin-manager/src/${twin}_federation_input.json ./input/strategyInputs
-    cd ..
+    cd ../..
 done
 
 cp -r ./DigitalTwinProfileSysMLv2/output/Battery/. ./CloudDeployerTestSimulator/input/
