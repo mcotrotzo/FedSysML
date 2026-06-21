@@ -13,7 +13,7 @@ resource "aws_lambda_layer_version" "paho_mqtt" {
 
 data "archive_file" "ConsumptionStrategy_collector_zip" {
   type        = "zip"
-  source_dir  = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/src/lambda_functions/collector"
+  source_dir  = "/mnt/c/Users/marco/FedSysML/src/lambda_functions/collector"
   output_path = "${path.module}/ConsumptionStrategy_collector_payload.zip"
 }
 
@@ -33,7 +33,7 @@ resource "aws_iam_role_policy" "ConsumptionStrategy_collector_policy" {
   role = aws_iam_role.ConsumptionStrategy_collector_role.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{"Effect": "Allow", "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "*"}, {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": ["arn:aws:lambda:eu-central-1:717556240325:function:Battery-hot-reader", "arn:aws:lambda:eu-central-1:717556240325:function:PV-hot-reader"]}]
+    Statement = [{"Effect": "Allow", "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "*"}, {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": ["arn:aws:lambda:eu-central-1:717556240325:function:PV-hot-reader", "arn:aws:lambda:eu-central-1:717556240325:function:Battery-hot-reader"]}]
   })
 }
 
@@ -101,7 +101,7 @@ resource "aws_lambda_function" "ConsumptionStrategy_strategy" {
 
 data "archive_file" "ConsumptionStrategy_feedback_zip" {
   type        = "zip"
-  source_dir  = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/src/lambda_functions/feedback"
+  source_dir  = "/mnt/c/Users/marco/FedSysML/src/lambda_functions/feedback"
   output_path = "${path.module}/ConsumptionStrategy_feedback_payload.zip"
 }
 

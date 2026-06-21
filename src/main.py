@@ -4,10 +4,11 @@ from domain.twin import FederationConfig
 from domain.terraform import TerraformConfig
 import json
 
-INPUT_FOLDER = '/home/marcocotrotzo/PycharmProjects/SymlCOnv/input/strategyInputs/'
-FED_TWIN_JSON = '/home/marcocotrotzo/PycharmProjects/SymlCOnv/input/fedtwin.json'
-BROKER_CONFIG_JSON = '/home/marcocotrotzo/PycharmProjects/SymlCOnv/input/brokerConfig.json'
-OUTPUT_FOLDER = '/home/marcocotrotzo/PycharmProjects/SymlCOnv/output/'
+INPUT_FOLDER = '../input/strategyInputs/'
+FED_TWIN_JSON = '../input/fedtwin.json'
+BROKER_CONFIG_JSON = '../input/brokerConfig.json'
+OUTPUT_FOLDER = '../output/'
+
 def collect_input_json():
     res = []
     for root, dirs, files in os.walk(INPUT_FOLDER):

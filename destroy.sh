@@ -6,6 +6,7 @@ for twin in Battery PV; do
 destroy
 EOF
     cd ..
+    cp ./digital-twin-manager/src/${twin}_federation_input.json ./input/strategyInputs
 done
 
 

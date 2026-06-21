@@ -30,12 +30,6 @@ done
 cp -r ./DigitalTwinProfileSysMLv2/output/Battery/. ./CloudDeployerTestSimulator/input/
 cp config_credentials.json ./CloudDeployerTestSimulator/input/
 
-if [ -f "config_credentials.json" ]; then
-    export AWS_ACCESS_KEY_ID=$(python3 -c "import json; print(json.load(open('config_credentials.json'))['aws_access_key_id'])")
-    export AWS_SECRET_ACCESS_KEY=$(python3 -c "import json; print(json.load(open('config_credentials.json'))['aws_secret_access_key'])")
-    export AWS_DEFAULT_REGION=$(python3 -c "import json; print(json.load(open('config_credentials.json')).get('aws_region', 'eu-central-1'))")
-fi
-
 cd CloudDeployerTestSimulator
 pip install -r requirements.txt
 pulumi login --local
