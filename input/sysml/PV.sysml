@@ -7,7 +7,7 @@ package PVTwin {
         #strategyAction production :>> strategieActions {
             :>> name = "production";
             :>> strategyType = StrategyType::LAMBDA;
-            :>> pathToCode = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/input/sysml/testLambdaFunctions/pv/production";
+            :>> pathToCode = "/mnt/c/Users/Marco/FedSysML/input/sysml/testLambdaFunctions/pv/production";
             :>> external = false;
         }
     }

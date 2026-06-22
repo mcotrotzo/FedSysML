@@ -1,10 +1,10 @@
+#!/bin/bash
+set -e
 for twin in Battery PV; do
     cp -r ./DigitalTwinProfileSysMLv2/output/$twin/. ./digital-twin-manager/
     cp config_credentials.json ./digital-twin-manager/
     cd digital-twin-manager/src
-    python main.py <<EOF
-destroy
-EOF
+    echo "destroy" | python main.py || true
     cd ../..
 done
 

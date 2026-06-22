@@ -8,7 +8,7 @@ package BatteryTwin {
         #strategyAction status :>> strategieActions {
             :>> name = "status";
             :>> strategyType = StrategyType::LAMBDA;
-            :>> pathToCode = "/home/marcocotrotzo/PycharmProjects/SymlCOnv/input/sysml/testLambdaFunctions/battery/status";
+            :>> pathToCode = "/mnt/c/Users/Marco/FedSysML/input/sysml/testLambdaFunctions/battery/status";
             :>> external = false;
         }
     }
