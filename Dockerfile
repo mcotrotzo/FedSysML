@@ -5,8 +5,6 @@ ARG TERRAFORM_VERSION=1.15.8
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     APP_HOME=/opt/fed-sysml \
-    PIPELINE_INPUT_DIR=/pipeline/input \
-    PIPELINE_OUTPUT_DIR=/pipeline/output \
     PYTHONPATH=/opt/fed-sysml/src
 
 WORKDIR ${APP_HOME}
@@ -35,18 +33,17 @@ COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir -r requirements.txt
 
+RUN python -m pip install --no-cache-dir paho-mqtt -t /tmp/paho_layer/python \
+    && cd /tmp/paho_layer \
+    && python -m zipfile -c "${APP_HOME}/paho_layer.zip" python \
+    && rm -rf /tmp/paho_layer
+
 COPY src ./src
 COPY docker/entrypoint.sh /usr/local/bin/fed-sysml-entrypoint
 
-RUN mkdir -p "${PIPELINE_INPUT_DIR}" "${PIPELINE_OUTPUT_DIR}" \
-    && ln -sfn "${PIPELINE_INPUT_DIR}" "${APP_HOME}/input" \
-    && ln -sfn "${PIPELINE_OUTPUT_DIR}" "${APP_HOME}/output" \
-    && chmod +x /usr/local/bin/fed-sysml-entrypoint
+RUN chmod +x /usr/local/bin/fed-sysml-entrypoint
 
 WORKDIR ${APP_HOME}/src
 
-VOLUME ["/pipeline/input", "/pipeline/output"]
-
 ENTRYPOINT ["/usr/local/bin/fed-sysml-entrypoint"]
 CMD ["generate"]
-
