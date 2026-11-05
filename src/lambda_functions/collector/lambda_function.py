@@ -14,11 +14,14 @@ class ParameterInfo():
     workspace_id: Optional[str] = None
     entity_id: Optional[str] = None
     strategy_name: Optional[str] = None
+    has_configured_value: bool = False
 
     @staticmethod
     def parseInfo(data):
         param = ParameterInfo()
         param.name = data["name"]
+        param.has_configured_value = "value" in data
+        param.value = data.get("value")
         param.hot_reader_arn = data.get("hot_reader_arn", None)
         param.region = data.get("region", None)
         param.dataType = data.get("dataType", None)
@@ -52,13 +55,21 @@ class ParameterInfo():
                 InvocationType="RequestResponse",
                 Payload=json.dumps(payload).encode("utf-8")
             )
-        
+
             result = json.loads(response["Payload"].read())
+            if response.get("FunctionError"):
+                raise RuntimeError(
+                    f"Hot reader '{self.hot_reader_arn}' failed: {json.dumps(result)}"
+                )
             prop = result["propertyValues"].get(self.property_name)
             if prop:
                 value_dict = prop["propertyValue"]["value"]
                 self.value = list(value_dict.values())[0]
                 return
+
+        if self.has_configured_value:
+            return
+
         print(f"Warning: No value fetched for parameter '{self.name}'")
         self.value = None
 
@@ -105,15 +116,20 @@ class Parameters:
 PARAMETER_INFO = json.loads(os.environ.get("PARAMETERS", "{}"))
 
 
-def lambda_handler(event, context):
+def collect_values(event):
     print("Received event:", event)
     triggered_strategy = event["e"]["action"]["functionName"]
-    
+
     parameters = Parameters(triggered_strategy)
     parameters.parse_parameters(PARAMETER_INFO)
     parameters.fetch_all_values()
 
+    return parameters.returnValues()
+
+
+def lambda_handler(event, context):
+    values = collect_values(event)
     return {
         'statusCode': 200,
-        'body': json.dumps(parameters.returnValues())
+        'body': json.dumps(values)
     }
