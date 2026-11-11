@@ -88,8 +88,9 @@ resource "aws_lambda_function" "{self.name}" {{
 }}"""
 
 class TerraformConfig:
-    def __init__(self, fed_config):
+    def __init__(self, fed_config, twin_devices: dict[str, dict]):
         self.fed_config = fed_config
+        self.twin_devices = twin_devices or {}
         self.tf_blocks: list[str] = []
 
     def _prepare_paho_layer(self, output_dir: str):
@@ -167,7 +168,10 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
         shutil.copytree(COLLECTOR_PATH, os.path.join(build_dir, "collector"), ignore=ignore)
         shutil.copytree(FEEDBACK_PATH, os.path.join(build_dir, "feedback"), ignore=ignore)
         shutil.copytree(strategy_source, os.path.join(build_dir, "strategy"), ignore=ignore)
-
+       
+        with open(os.path.join(build_dir, "twin_devices.json"), "w") as f:
+            json.dump(self.twin_devices, f, indent=2, sort_keys=True)
+            
         relative_build_dir = _terraform_path(os.path.relpath(build_dir, output_dir))
         return f"${{path.module}}/{relative_build_dir}"
 
