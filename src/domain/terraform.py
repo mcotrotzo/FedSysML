@@ -1,3 +1,4 @@
+from importlib.resources import path
 import json
 import os
 import re
@@ -7,6 +8,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COLLECTOR_PATH = os.path.join(BASE_DIR, "lambda_functions", "collector")
 FEEDBACK_PATH = os.path.join(BASE_DIR, "lambda_functions", "feedback")
 PIPELINE_PATH = os.path.join(BASE_DIR, "lambda_functions", "pipeline")
+TWIN_CONFIGS_MODULE = os.path.join(BASE_DIR, "lambda_functions", "twin_config.py")
 
 
 def _terraform_path(path: str) -> str:
@@ -90,7 +92,7 @@ resource "aws_lambda_function" "{self.name}" {{
 class TerraformConfig:
     def __init__(self, fed_config, twin_devices: dict[str, dict]):
         self.fed_config = fed_config
-        self.twin_devices = twin_devices or {}
+        self.twin_devices = twin_devices or []
         self.tf_blocks: list[str] = []
 
     def _prepare_paho_layer(self, output_dir: str):
@@ -168,10 +170,12 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
         shutil.copytree(COLLECTOR_PATH, os.path.join(build_dir, "collector"), ignore=ignore)
         shutil.copytree(FEEDBACK_PATH, os.path.join(build_dir, "feedback"), ignore=ignore)
         shutil.copytree(strategy_source, os.path.join(build_dir, "strategy"), ignore=ignore)
-       
-        with open(os.path.join(build_dir, "twin_devices.json"), "w") as f:
-            json.dump(self.twin_devices, f, indent=2, sort_keys=True)
-            
+        shutil.copy2(TWIN_CONFIGS_MODULE, os.path.join(build_dir, "twin_configs.py"))
+        for twin, path in self.twin_configs:
+            target = os.path.join(build_dir, "twins", twin)
+            os.makedirs(target, exist_ok=True)
+            shutil.copy2(path, os.path.join(target, os.path.basename(path)))
+        
         relative_build_dir = _terraform_path(os.path.relpath(build_dir, output_dir))
         return f"${{path.module}}/{relative_build_dir}"
 

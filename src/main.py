@@ -27,7 +27,8 @@ def main():
     parser.add_argument('--deployer_federation_input_json', nargs='+', help='Federation input files',default=[INPUT_FOLDER])
     parser.add_argument('--broker_config_json', help='Broker config json',default=BROKER_CONFIG_JSON)
     parser.add_argument('--code', action='append', default=[], help='Mapping pathToCode=folder for strategy code, can be given multiple times')
-    parser.add_argument('--config_iot_devices_json', action='append', default=[], help='Mapping twinName=path of a twin\'s config_iot_devices.json, can be given multiple times') 
+    parser.add_argument('--twin_config', action='append', default=[],
+                    help='twinName=path of a twin config json, copied to twins/<twinName>/ in every strategy package')
     args = parser.parse_args()
 
     inputs = collect_input_json(args.deployer_federation_input_json)
@@ -37,12 +38,8 @@ def main():
     for fed_twin in config.fedTwinConfig.fedTwins:
         for strategy in fed_twin.newStrategies:
             strategy.pathToCode = code_map.get(strategy.pathToCode, strategy.pathToCode)
-    twin_devices = {}
-    for entry in args.config_iot_devices_json:
-        twin, path = entry.split('=', 1)
-        with open(path) as f:
-            twin_devices[twin] = json.load(f)
-    terraform_config = TerraformConfig(config, twin_devices)
+    twin_configs = [tuple(entry.split('=', 1)) for entry in args.twin_config]
+    terraform_config = TerraformConfig(config, twin_configs)
     terraform_config.generate(output_path=os.path.join(args.output, "main.tf"))
 
 if __name__ == '__main__':
