@@ -90,9 +90,9 @@ resource "aws_lambda_function" "{self.name}" {{
 }}"""
 
 class TerraformConfig:
-    def __init__(self, fed_config, twin_devices: dict[str, dict]):
+    def __init__(self, fed_config, twin_configs: list[tuple[str, str]]):
         self.fed_config = fed_config
-        self.twin_devices = twin_devices or []
+        self.twin_configs = twin_configs or []
         self.tf_blocks: list[str] = []
 
     def _prepare_paho_layer(self, output_dir: str):
