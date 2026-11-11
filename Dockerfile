@@ -41,8 +41,8 @@ RUN python -m pip install --no-cache-dir paho-mqtt -t /tmp/paho_layer/python \
 COPY src ./src
 COPY docker/entrypoint.sh /usr/local/bin/fed-sysml-entrypoint
 
-RUN chmod +x /usr/local/bin/fed-sysml-entrypoint
-
+RUN sed -i "s/\r$//" /usr/local/bin/fed-sysml-entrypoint \
+    && chmod +x /usr/local/bin/fed-sysml-entrypoint
 WORKDIR ${APP_HOME}/src
 
 ENTRYPOINT ["/usr/local/bin/fed-sysml-entrypoint"]
