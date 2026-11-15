@@ -175,12 +175,21 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
             target = os.path.join(build_dir, "twins", twin)
             os.makedirs(target, exist_ok=True)
             shutil.copy2(path, os.path.join(target, os.path.basename(path)))
+        for twin in self.fed_config.twins.values():
+            target = os.path.join(build_dir, "twins", twin.name)
+            os.makedirs(target, exist_ok=True)
+            with open(os.path.join(target, "hot_reader.json"), "w", encoding="utf-8") as f:
+                json.dump({
+                    "hot_reader_arn": twin.hot_reader_arn,
+                    "workspace_id": twin.twinmaker_workspace_id,
+                    "region": twin.region,
+                }, f)
         
         relative_build_dir = _terraform_path(os.path.relpath(build_dir, output_dir))
         return f"${{path.module}}/{relative_build_dir}"
 
     def _create_pipeline_lambda(self, ns, output_dir: str):
-        arns = list(set(t.hot_reader_arn for t in ns.resolved_twins))
+        arns = sorted(set(t.hot_reader_arn for t in self.fed_config.twins.values()))
         source_dir = self._pipeline_source_dir(ns, output_dir)
         deployer = LambdaDeployer(f"{ns.name}_pipeline", source_dir, timeout=90)
         deployer.add_statement("Allow", ["lambda:InvokeFunction"], arns)

@@ -1,9 +1,4 @@
-"""Access to the configs of the deployed twins for strategy code.
 
-The fedtool ships this module and the twin configs in every strategy package.
-Strategy code only uses device_id / component_device_id; where the configs are
-stored is decided here, so changing the storage only changes this module.
-"""
 import functools
 import json
 import os
@@ -41,3 +36,9 @@ def component_device_id(twin, component_name):
     if not found:
         raise ValueError(f"Twin {twin} has no component {component_name}")
     return found
+
+def hot_reader(twin):
+    """Hot-reader coordinates of a twin: hot_reader_arn, workspace_id, region, entity_id."""
+    info = dict(twin_config(twin, "hot_reader.json"))
+    info["entity_id"] = twin_config(twin, "config_hierarchy.json")[0]["id"]
+    return info
