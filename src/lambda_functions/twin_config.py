@@ -42,3 +42,21 @@ def hot_reader(twin):
     info = dict(twin_config(twin, "hot_reader.json"))
     info["entity_id"] = twin_config(twin, "config_hierarchy.json")[0]["id"]
     return info
+
+
+def component_of(twin, property_name):
+    """Name of the component whose device carries the given property."""
+    device = device_id(twin, property_name)
+    for child in twin_config(twin, "config_hierarchy.json")[0].get("children", []):
+        if child.get("iotDeviceId") == device:
+            return child["name"]
+    raise ValueError(f"Twin {twin} has no component for property {property_name}")
+
+
+def const_value(twin, property_name):
+    """Deployed initValue of a #constAttribute of the twin."""
+    for device in twin_config(twin, "config_iot_devices.json"):
+        for prop in device.get("properties", []):
+            if prop.get("name") == property_name and "initValue" in prop:
+                return prop["initValue"]
+    raise ValueError(f"Twin {twin} has no constant {property_name}")
