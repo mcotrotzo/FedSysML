@@ -1,4 +1,9 @@
+"""Access to the configs of the deployed twins for strategy code.
 
+The fedtool ships this module and the twin configs in every strategy package.
+Strategy code only uses device_id / component_device_id; where the configs are
+stored is decided here, so changing the storage only changes this module.
+"""
 import functools
 import json
 import os
@@ -60,3 +65,13 @@ def const_value(twin, property_name):
             if prop.get("name") == property_name and "initValue" in prop:
                 return prop["initValue"]
     raise ValueError(f"Twin {twin} has no constant {property_name}")
+
+
+def strategy_values(event):
+    """Collector values of this strategy, keyed by the event names of the twin models.
+
+    The hub renames strategies when it merges federations, so strategy code never
+    uses a strategy name; the pipeline lambda is named after its own strategy.
+    """
+    own_strategy = os.environ["AWS_LAMBDA_FUNCTION_NAME"].removesuffix("_pipeline")
+    return event.get(own_strategy, {})
