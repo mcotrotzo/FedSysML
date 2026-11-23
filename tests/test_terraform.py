@@ -108,7 +108,9 @@ class TerraformPipelineTests(unittest.TestCase):
             combined = new_strategy("CombinedStrategy", strategy_dir)
             output_path = root / "output" / "main.tf"
 
-            TerraformConfig(federation_config([combined])).generate(str(output_path))
+            TerraformConfig(federation_config([combined]), twin_configs=[]).generate(
+                str(output_path)
+            )
 
             terraform = output_path.read_text(encoding="utf-8")
             self.assertEqual(1, terraform.count('resource "aws_lambda_function"'))
@@ -178,7 +180,9 @@ class TerraformPipelineTests(unittest.TestCase):
             )
             output_path = output_dir / "main.tf"
 
-            TerraformConfig(federation_config([combined])).generate(str(output_path))
+            TerraformConfig(federation_config([combined]), twin_configs=[]).generate(
+                str(output_path)
+            )
 
             terraform = output_path.read_text(encoding="utf-8")
             self.assertEqual(
@@ -217,9 +221,9 @@ class TerraformPipelineTests(unittest.TestCase):
             )
             output_path = root / "output" / "main.tf"
 
-            TerraformConfig(federation_config([first, second])).generate(
-                str(output_path)
-            )
+            TerraformConfig(
+                federation_config([first, second]), twin_configs=[]
+            ).generate(str(output_path))
 
             terraform = output_path.read_text(encoding="utf-8")
             self.assertEqual(2, terraform.count('resource "aws_lambda_function"'))
@@ -250,7 +254,7 @@ class TerraformPipelineTests(unittest.TestCase):
                 FileNotFoundError,
                 "must contain a lambda_function.py",
             ):
-                TerraformConfig(federation_config([combined])).generate(
+                TerraformConfig(federation_config([combined]), twin_configs=[]).generate(
                     str(root / "output" / "main.tf")
                 )
 
@@ -272,7 +276,7 @@ class TerraformPipelineTests(unittest.TestCase):
                 ValueError,
                 "Unsupported feedback type 'QUEUE'",
             ):
-                TerraformConfig(federation_config([combined])).generate(
+                TerraformConfig(federation_config([combined]), twin_configs=[]).generate(
                     str(root / "output" / "main.tf")
                 )
 
@@ -285,7 +289,7 @@ class TerraformParameterEncodingTests(unittest.TestCase):
                 "CombinedStrategy",
                 create_strategy_source(root),
             )
-            generator = TerraformConfig(federation_config([combined]))
+            generator = TerraformConfig(federation_config([combined]), twin_configs=[])
             generator._create_pipeline_lambda(combined, str(root / "output"))
 
             lambda_block = generator.tf_blocks[-1]
