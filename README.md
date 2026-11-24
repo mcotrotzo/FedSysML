@@ -39,8 +39,8 @@ deployed twins, call `generate` explicitly:
 ```bash
 docker compose run --rm fed-sysml generate \
   --output /pipeline/output \
-  --twin_config Battery=/pipeline/input/twinConfigs/Battery/config_iot_devices.json \
-  --twin_config Battery=/pipeline/input/twinConfigs/Battery/config_hierarchy.json
+  --twin_config Battery=/pipeline/input/twinConfigs/Battery \
+  --twin_config PV=/pipeline/input/twinConfigs/PV
 ```
 
 Terraform commands run inside the same image and use the mounted `output`
@@ -156,7 +156,6 @@ from datetime import datetime, timezone
 
 from twin_configs import device_id
 
-
 BATTERY_CONSUMPTION_DEVICE_ID = device_id("Battery", "consumption")
 
 def lambda_handler(event, context):
@@ -193,11 +192,6 @@ In the example above, the new strategy is called `ConsumptionStrategy`, so:
 - `event["ConsumptionStrategy"]["production"]["generatedPower"]` — comes from `PV.production`
 - `event["ConsumptionStrategy"]["status"]["chargeValue"]` — comes from `Battery.status`
 
-If strategy code must not depend on its own strategy name (for example because a
-caller renames strategies when merging federations), use
-`strategy_values(event)` from `twin_configs`. It returns the same dictionary,
-looked up by the name of the pipeline Lambda.
-
 Note that only the strategy name (`production`, `status`) is used as the key inside `event["ConsumptionStrategy"]`, not the twin name (`PV`, `Battery`) — the twin name in `fedtwin.json`'s `strategies` list is only there to tell the collector phase _where_ to fetch the value from.
 
 ### Return value and feedback behavior
@@ -217,6 +211,7 @@ So in the example, what actually gets published to `Battery/iot-data` is just:
 }
 ```
 
+not the outer `{"statusCode": 200, "body": "..."}` object.
 
 ## 5. Twin configs — `--twin_config` and `twin_configs.py`
 
@@ -228,16 +223,17 @@ to the tool:
 
 ```bash
 python main.py \
-  --twin_config Battery=../input/twinConfigs/Battery/config_iot_devices.json \
-  --twin_config Battery=../input/twinConfigs/Battery/config_hierarchy.json \
-  --twin_config PV=../input/twinConfigs/PV/config_iot_devices.json
+  --twin_config Battery=../input/twinConfigs/Battery \
+  --twin_config PV=../input/twinConfigs/PV
 ```
 
-Each entry is `twinName=path` and can be given multiple times. Use the configs the
-twin was deployed with (the `digital-twin-manager` input: `config.json`,
-`config_iot_devices.json`, `config_events.json`, `config_hierarchy.json`). Pass
-the configs of every twin your strategy code reads, including twins that trigger
-no strategy themselves.
+Each entry is `twinName=path`, one per twin. `path` is normally the folder with
+the configs the twin was deployed with (the `digital-twin-manager` input:
+`config.json`, `config_iot_devices.json`, `config_events.json`,
+`config_hierarchy.json`); every `*.json` file directly inside it is shipped. A
+single file also works (`Battery=.../config_iot_devices.json`), and entries for
+the same twin can be repeated. Pass every twin your strategy code reads,
+including twins that trigger no strategy themselves.
 
 For every new strategy, the generated deployment package then contains:
 
@@ -261,7 +257,6 @@ Strategy code reads the values with the helpers of `twin_configs`:
 | `const_value(twin, property)` | deployed `initValue` of a constant attribute | `config_iot_devices.json` |
 | `hot_reader(twin)` | `hot_reader_arn`, `workspace_id`, `region`, `entity_id` | `hot_reader.json`, `config_hierarchy.json` |
 | `twin_config(twin, file)` | any shipped config file, parsed | that file |
-| `strategy_values(event)` | collector values of the own strategy (section 4) | — |
 
 Example:
 
@@ -270,13 +265,24 @@ from twin_configs import const_value, device_id, hot_reader
 
 BATTERY_CAPACITY = const_value("Battery", "totalCapacity")
 BATTERY_STORAGE_DEVICE_ID = device_id("Battery", "charge")
-GRID = hot_reader("Grid")
+GRID = hot_reader("Grid") 
 ```
 
-The helpers raise `ValueError` if a twin, property or component is missing, so a
-wrong model fails when the Lambda starts instead of publishing to a wrong device.
+Generation checks the twin configs before anything is packaged: every twin with
+a federation input file (section 1) needs all four configs (`config.json`,
+`config_iot_devices.json`, `config_events.json`, `config_hierarchy.json`), and
+every `--twin_config` twin needs a federation input file. Otherwise generation
+stops and lists what is missing, e.g. `PV: config_hierarchy.json`. Without any
+`--twin_config`, generation only prints a warning, so federations whose strategy
+code does not use `twin_configs` keep working.
 
+At runtime the helpers raise `ValueError` if a property or component does not
+exist in the shipped configs (e.g. a misspelled name), so a wrong reference fails
+when the Lambda starts instead of publishing to a wrong device.
 
+When a twin is redeployed with changed configs (new device, changed constant),
+generate the federation again with the new configs and run `terraform apply`. The
+changed package is then redeployed; no strategy code has to change.
 
 ## Command-line options
 
@@ -288,5 +294,8 @@ wrong model fails when the Lambda starts instead of publishing to a wrong device
 | `--fed_twin_json` | `../input/fedtwin.json` | Federation definition (section 2) |
 | `--broker_config_json` | `../input/brokerConfig.json` | Broker profiles (section 3) |
 | `--deployer_federation_input_json` | `../input/strategyInputs/` | One or more federation input files or folders (section 1) |
-| `--twin_config` | — | `twinName=path` of a deployed twin config (section 5), repeatable |
+| `--twin_config` | — | `twinName=folder` (all `*.json` inside) or `twinName=file` of a deployed twin config (section 5), repeatable |
 | `--code` | — | `pathToCode=folder`, replaces a `pathToCode` from `fedtwin.json`, repeatable |
+
+In the Docker image, paths are resolved from `/opt/fed-sysml/src`; use absolute
+container paths such as `/pipeline/input/...`.

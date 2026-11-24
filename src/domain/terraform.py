@@ -89,6 +89,29 @@ resource "aws_lambda_function" "{self.name}" {{
   }}
 }}"""
 
+REQUIRED_TWIN_CONFIGS = (
+    "config.json",
+    "config_iot_devices.json",
+    "config_events.json",
+    "config_hierarchy.json",
+)
+
+
+def _twin_config_files(path: str) -> list[str]:
+    """A single config file, or every *.json file directly inside a folder."""
+    if os.path.isdir(path):
+        files = sorted(
+            os.path.join(path, name) for name in os.listdir(path)
+            if name.endswith(".json") and os.path.isfile(os.path.join(path, name))
+        )
+        if not files:
+            raise FileNotFoundError(f"Twin config folder contains no .json files: {path}")
+        return files
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Twin config not found: {path}")
+    return [path]
+
+
 class TerraformConfig:
     def __init__(self, fed_config, twin_configs: list[tuple[str, str]]):
         self.fed_config = fed_config
@@ -120,7 +143,32 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
   compatible_runtimes = ["python3.13"]
 }}""")
 
+    def _check_twin_configs(self):
+        """Fail before packaging if a twin with a federation input lacks its configs.
+
+        twin_configs.py reads the configs only at runtime, so a missing file would
+        otherwise surface as a FileNotFoundError in the deployed Lambda.
+        """
+        if not self.twin_configs:
+            print("Warning: no --twin_config given; strategy code cannot use twin_configs.py.")
+            return
+        shipped: dict[str, set[str]] = {}
+        for twin, path in self.twin_configs:
+            names = {os.path.basename(f) for f in _twin_config_files(path)}
+            shipped.setdefault(twin, set()).update(names)
+        missing = []
+        for twin in sorted(t.name for t in self.fed_config.twins.values()):
+            for name in REQUIRED_TWIN_CONFIGS:
+                if name not in shipped.get(twin, set()):
+                    missing.append(f"{twin}: {name}")
+        unknown = sorted(set(shipped) - {t.name for t in self.fed_config.twins.values()})
+        if unknown:
+            missing.append("no federation input for --twin_config twin(s): " + ", ".join(unknown))
+        if missing:
+            raise ValueError("Incomplete twin configs:\n  " + "\n  ".join(missing))
+
     def generate(self, output_path: str):
+        self._check_twin_configs()
         out_dir = os.path.dirname(os.path.abspath(output_path))
         os.makedirs(out_dir, exist_ok=True)
         self._create_providers()
@@ -174,7 +222,8 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
         for twin, path in self.twin_configs:
             target = os.path.join(build_dir, "twins", twin)
             os.makedirs(target, exist_ok=True)
-            shutil.copy2(path, os.path.join(target, os.path.basename(path)))
+            for config_file in _twin_config_files(path):
+                shutil.copy2(config_file, os.path.join(target, os.path.basename(config_file)))
         for twin in self.fed_config.twins.values():
             target = os.path.join(build_dir, "twins", twin.name)
             os.makedirs(target, exist_ok=True)
