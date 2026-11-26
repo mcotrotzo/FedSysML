@@ -32,6 +32,17 @@ docker compose build
 docker compose run --rm fed-sysml
 ```
 
+Without arguments, `generate` uses the default inputs under `/pipeline/input`
+(see [Command-line options](#command-line-options)). To pass the configs of the
+deployed twins, call `generate` explicitly:
+
+```bash
+docker compose run --rm fed-sysml generate \
+  --output /pipeline/output \
+  --twin_config Battery=/pipeline/input/twinConfigs/Battery \
+  --twin_config PV=/pipeline/input/twinConfigs/PV
+```
+
 Terraform commands run inside the same image and use the mounted `output`
 directory:
 
@@ -59,7 +70,7 @@ The generated SSM registry entry contains the pipeline Lambda ARN with `type = "
 
 If you already have a deployment based on the previous three-Lambda Step Functions workflow, follow the [migration guide](MIGRATION.md) before applying the newly generated Terraform.
 
-To set up the tool, you need to provide four things, described below.
+To set up the tool, you need to provide the four things described below. Section 5 describes the optional twin configs that strategy code can read at runtime.
 
 ## 1. Federation input file
 
@@ -141,8 +152,11 @@ Your combined strategy must be a Python file named exactly `lambda_function.py`,
 
 ```python
 import json
-from time import time
 from datetime import datetime, timezone
+
+from twin_configs import device_id
+
+BATTERY_CONSUMPTION_DEVICE_ID = device_id("Battery", "consumption")
 
 def lambda_handler(event, context):
     kombi_data = event.get("ConsumptionStrategy", {})
@@ -158,7 +172,7 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "iotDeviceId": "SwiB9jTPm8kzDXz6chmo5T",
+            "iotDeviceId": BATTERY_CONSUMPTION_DEVICE_ID,
             "time": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
             "consumption": effective_consumption,
         })
@@ -198,3 +212,90 @@ So in the example, what actually gets published to `Battery/iot-data` is just:
 ```
 
 not the outer `{"statusCode": 200, "body": "..."}` object.
+
+## 5. Twin configs — `--twin_config` and `twin_configs.py`
+
+Strategy code often needs values that only exist after the twins are deployed:
+the IoT device ID to publish feedback to, a constant from the model (e.g. a
+battery capacity), or the hot reader of another twin. Instead of hard-coding these
+values or injecting them after deployment, pass the configs of the deployed twins
+to the tool:
+
+```bash
+python main.py \
+  --twin_config Battery=../input/twinConfigs/Battery \
+  --twin_config PV=../input/twinConfigs/PV
+```
+
+Each entry is `twinName=path`, one per twin. `path` is normally the folder with
+the configs the twin was deployed with (the `digital-twin-manager` input:
+`config.json`, `config_iot_devices.json`, `config_events.json`,
+`config_hierarchy.json`); every `*.json` file directly inside it is shipped. A
+single file also works (`Battery=.../config_iot_devices.json`), and entries for
+the same twin can be repeated. Pass every twin your strategy code reads,
+including twins that trigger no strategy themselves.
+
+For every new strategy, the generated deployment package then contains:
+
+```text
+twin_configs.py                      helper module, importable from strategy code
+twins/<twinName>/<config file>       every --twin_config file of that twin
+twins/<twinName>/hot_reader.json     hot_reader_arn, workspace_id, region
+```
+
+`hot_reader.json` is written for every twin with a federation input file (section 1).
+The generated IAM role of every pipeline Lambda may invoke the hot readers of all
+these twins, so no permissions have to be added after `terraform apply`.
+
+Strategy code reads the values with the helpers of `twin_configs`:
+
+| Function | Returns | Needs |
+| --- | --- | --- |
+| `device_id(twin, property)` | ID of the IoT device that has the property | `config_iot_devices.json` |
+| `component_device_id(twin, component)` | ID of the device behind a named component | `config_hierarchy.json` |
+| `component_of(twin, property)` | name of the component whose device has the property | both |
+| `const_value(twin, property)` | deployed `initValue` of a constant attribute | `config_iot_devices.json` |
+| `hot_reader(twin)` | `hot_reader_arn`, `workspace_id`, `region`, `entity_id` | `hot_reader.json`, `config_hierarchy.json` |
+| `twin_config(twin, file)` | any shipped config file, parsed | that file |
+
+Example:
+
+```python
+from twin_configs import const_value, device_id, hot_reader
+
+BATTERY_CAPACITY = const_value("Battery", "totalCapacity")
+BATTERY_STORAGE_DEVICE_ID = device_id("Battery", "charge")
+GRID = hot_reader("Grid") 
+```
+
+Generation checks the twin configs before anything is packaged: every twin with
+a federation input file (section 1) needs all four configs (`config.json`,
+`config_iot_devices.json`, `config_events.json`, `config_hierarchy.json`), and
+every `--twin_config` twin needs a federation input file. Otherwise generation
+stops and lists what is missing, e.g. `PV: config_hierarchy.json`. Without any
+`--twin_config`, generation only prints a warning, so federations whose strategy
+code does not use `twin_configs` keep working.
+
+At runtime the helpers raise `ValueError` if a property or component does not
+exist in the shipped configs (e.g. a misspelled name), so a wrong reference fails
+when the Lambda starts instead of publishing to a wrong device.
+
+When a twin is redeployed with changed configs (new device, changed constant),
+generate the federation again with the new configs and run `terraform apply`. The
+changed package is then redeployed; no strategy code has to change.
+
+## Command-line options
+
+`main.py` (Docker: `generate`) accepts:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--output` | `../output/` | Folder for `main.tf` and the build folders |
+| `--fed_twin_json` | `../input/fedtwin.json` | Federation definition (section 2) |
+| `--broker_config_json` | `../input/brokerConfig.json` | Broker profiles (section 3) |
+| `--deployer_federation_input_json` | `../input/strategyInputs/` | One or more federation input files or folders (section 1) |
+| `--twin_config` | — | `twinName=folder` (all `*.json` inside) or `twinName=file` of a deployed twin config (section 5), repeatable |
+| `--code` | — | `pathToCode=folder`, replaces a `pathToCode` from `fedtwin.json`, repeatable |
+
+In the Docker image, paths are resolved from `/opt/fed-sysml/src`; use absolute
+container paths such as `/pipeline/input/...`.
