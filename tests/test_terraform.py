@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
+import runpy
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import Mock, patch
 import zipfile
 
 from tests import support  # noqa: F401
@@ -129,10 +131,9 @@ class TerraformPipelineTests(unittest.TestCase):
             self.assertIn('"lambda:InvokeFunction"', terraform)
             self.assertIn('"iot:Publish"', terraform)
             self.assertNotIn("aws_lambda_layer_version.paho_mqtt", terraform)
-            self.assertIn('\\"entity_id\\": \\"entity\\"', terraform)
-            self.assertIn('\\"component_name\\": \\"component\\"', terraform)
-            self.assertIn('\\"property_name\\": \\"power\\"', terraform)
-            self.assertIn('\\"value\\": 0', terraform)
+            self.assertNotIn("PARAMETERS =", terraform)
+            self.assertIn('FEEDBACK_TYPE = "INTERNAL"', terraform)
+            self.assertIn('FEEDBACK_TOPIC = "target/iot-data"', terraform)
 
             build_dir = (
                 root / "output" / ".build" / "CombinedStrategy_pipeline"
@@ -140,6 +141,7 @@ class TerraformPipelineTests(unittest.TestCase):
             expected_files = [
                 "lambda_function.py",
                 "collector/lambda_function.py",
+                "collector/parameters.json",
                 "feedback/lambda_function.py",
                 "strategy/lambda_function.py",
                 "strategy/helper.py",
@@ -242,6 +244,9 @@ class TerraformPipelineTests(unittest.TestCase):
                 "aws_lambda_function.SecondCombined_pipeline.arn}",
                 terraform,
             )
+            for name in ("FirstCombined", "SecondCombined"):
+                manifest = output_path.parent / ".build" / f"{name}_pipeline" / "collector" / "parameters.json"
+                self.assertEqual([name], list(json.loads(manifest.read_bytes())))
 
     def test_strategy_without_lambda_handler_file_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -282,24 +287,23 @@ class TerraformPipelineTests(unittest.TestCase):
 
 
 class TerraformParameterEncodingTests(unittest.TestCase):
-    def test_parameter_environment_is_valid_json_before_terraform_escaping(self):
+    def test_packaged_collector_loads_parameter_metadata_larger_than_4_kib(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            combined = new_strategy(
-                "CombinedStrategy",
-                create_strategy_source(root),
+            source = source_strategy()
+            readings = {f"reading{i}": i for i in range(20)}
+            source.inputParameters.extend(
+                SimpleNamespace(name=name, dataType="DOUBLE", id=f"entity.component.{name}", value=value)
+                for name, value in readings.items()
             )
-            generator = TerraformConfig(federation_config([combined]), twin_configs=[])
-            generator._create_pipeline_lambda(combined, str(root / "output"))
+            combined = new_strategy("CombinedStrategy", create_strategy_source(root), strategy=source)
+            output = root / "output"
+            TerraformConfig(federation_config([combined]), twin_configs=[]).generate(str(output / "main.tf"))
 
-            lambda_block = generator.tf_blocks[-1]
-            parameters_line = next(
-                line
-                for line in lambda_block.splitlines()
-                if line.strip().startswith("PARAMETERS = ")
-            )
-            terraform_string = parameters_line.split("=", 1)[1].strip()
-            parameters = json.loads(json.loads(terraform_string))
+            collector_dir = output / ".build" / "CombinedStrategy_pipeline" / "collector"
+            data = (collector_dir / "parameters.json").read_bytes()
+            self.assertGreater(len(data), 4096)
+            parameters = json.loads(data)
 
             self.assertEqual(
                 {
@@ -316,6 +320,17 @@ class TerraformParameterEncodingTests(unittest.TestCase):
                 parameters["CombinedStrategy"][0],
             )
             self.assertEqual(0, parameters["CombinedStrategy"][1]["value"])
+
+            handler = runpy.run_path(str(collector_dir / "lambda_function.py"))["collect_values"]
+            payload = Mock()
+            payload.read.return_value = b'{"propertyValues": {}}'
+            with patch.object(support.BOTO3_STUB, "client") as client:
+                client.return_value.invoke.return_value = {"Payload": payload}
+                result = handler({"e": {"action": {"functionName": "sourceStrategy"}}})
+            self.assertEqual(
+                {"CombinedStrategy": {"sourceStrategy": {"power": None, "minimum": 0, **readings}}},
+                result,
+            )
 
 
 if __name__ == "__main__":

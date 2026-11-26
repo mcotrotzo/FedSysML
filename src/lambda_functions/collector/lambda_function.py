@@ -1,6 +1,7 @@
+from functools import cache
+from pathlib import Path
 from typing import List, Optional, Union
 import json
-import os
 import boto3
 
 class ParameterInfo():
@@ -113,7 +114,10 @@ class Parameters:
         return res
 
 
-PARAMETER_INFO = json.loads(os.environ.get("PARAMETERS", "{}"))
+@cache
+def _load_parameters():
+    with Path(__file__).with_name("parameters.json").open(encoding="utf-8") as f:
+        return json.load(f)
 
 
 def collect_values(event):
@@ -121,7 +125,7 @@ def collect_values(event):
     triggered_strategy = event["e"]["action"]["functionName"]
 
     parameters = Parameters(triggered_strategy)
-    parameters.parse_parameters(PARAMETER_INFO)
+    parameters.parse_parameters(_load_parameters())
     parameters.fetch_all_values()
 
     return parameters.returnValues()

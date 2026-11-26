@@ -188,7 +188,7 @@ class CollectorTests(unittest.TestCase):
         event = {"e": {"action": {"functionName": "production"}}}
 
         with (
-            patch.object(collector, "PARAMETER_INFO", parameter_info),
+            patch.object(collector, "_load_parameters", return_value=parameter_info),
             patch.object(collector.boto3, "client", return_value=lambda_client),
         ):
             result = collector.collect_values(event)

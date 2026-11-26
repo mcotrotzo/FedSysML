@@ -149,7 +149,7 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
             alias = twin.region.replace("-", "_")
             self.tf_blocks.append(f'provider "aws" {{\n  alias  = "{alias}"\n  region = "{twin.region}"\n}}')
 
-    def _pipeline_source_dir(self, ns, output_dir: str) -> str:
+    def _pipeline_source_dir(self, ns, output_dir: str, parameters: dict) -> str:
         strategy_source = os.path.abspath(os.path.expanduser(ns.pathToCode))
         strategy_handler = os.path.join(strategy_source, "lambda_function.py")
         if not os.path.isfile(strategy_handler):
@@ -167,7 +167,10 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
 
         ignore = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo", "*.zip", ".venv", "venv")
         shutil.copytree(PIPELINE_PATH, build_dir, ignore=ignore)
-        shutil.copytree(COLLECTOR_PATH, os.path.join(build_dir, "collector"), ignore=ignore)
+        collector_dir = os.path.join(build_dir, "collector")
+        shutil.copytree(COLLECTOR_PATH, collector_dir, ignore=ignore)
+        with open(os.path.join(collector_dir, "parameters.json"), "w", encoding="utf-8") as f:
+            json.dump(parameters, f)
         shutil.copytree(FEEDBACK_PATH, os.path.join(build_dir, "feedback"), ignore=ignore)
         shutil.copytree(strategy_source, os.path.join(build_dir, "strategy"), ignore=ignore)
         shutil.copy2(TWIN_CONFIGS_MODULE, os.path.join(build_dir, "twin_configs.py"))
@@ -189,11 +192,6 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
         return f"${{path.module}}/{relative_build_dir}"
 
     def _create_pipeline_lambda(self, ns, output_dir: str):
-        arns = sorted(set(t.hot_reader_arn for t in self.fed_config.twins.values()))
-        source_dir = self._pipeline_source_dir(ns, output_dir)
-        deployer = LambdaDeployer(f"{ns.name}_pipeline", source_dir, timeout=90)
-        deployer.add_statement("Allow", ["lambda:InvokeFunction"], arns)
-
         params = {
             ns.name: []
         }
@@ -213,9 +211,13 @@ resource "aws_lambda_layer_version" "paho_mqtt" {{
                     **({"value": i.value} if i.value is not None else {})
                 })
 
+        source_dir = self._pipeline_source_dir(ns, output_dir, params)
+        deployer = LambdaDeployer(f"{ns.name}_pipeline", source_dir, timeout=90)
+        arns = sorted(set(t.hot_reader_arn for t in self.fed_config.twins.values()))
+        deployer.add_statement("Allow", ["lambda:InvokeFunction"], arns)
+
         feedback = ns.feedback
         feedback_type = feedback.type.upper()
-        deployer.add_env("PARAMETERS", json.dumps(params))
         deployer.add_env("FEEDBACK_TYPE", feedback_type)
         deployer.add_env("FEEDBACK_TOPIC", feedback.topic)
 
